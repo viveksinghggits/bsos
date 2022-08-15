@@ -24,6 +24,8 @@ type Driver struct {
 	srv *grpc.Server
 	// http server, health check
 	// storage clients
+
+	ready bool
 }
 
 type InputParams struct {
@@ -57,7 +59,7 @@ func (d *Driver) Run() error {
 		grpcAddress = filepath.FromSlash(url.Path)
 	}
 
-	if err := os.Remove(grpcAddress); err != nil && !os.IsExist(err) {
+	if err := os.Remove(grpcAddress); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("removiong listen address %s\n", err.Error())
 	}
 
@@ -71,6 +73,8 @@ func (d *Driver) Run() error {
 	csi.RegisterNodeServer(d.srv, d)
 	csi.RegisterControllerServer(d.srv, d)
 	csi.RegisterIdentityServer(d.srv, d)
+
+	d.ready = true
 
 	return d.srv.Serve(listener)
 }
