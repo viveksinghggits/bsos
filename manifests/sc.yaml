@@ -1,0 +1,6 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: bsos
+provisioner: bsos.viveksingh.dev
+volumeBindingMode: Immediate

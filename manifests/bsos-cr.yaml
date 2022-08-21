@@ -9,7 +9,10 @@ rules:
   resources:
   - persistentvolumeclaims
   - persistentvolumes
+  - events
   verbs:
+  - patch
+  - create
   - list
   - watch
 - apiGroups:

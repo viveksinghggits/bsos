@@ -19,13 +19,17 @@ func main() {
 	fmt.Println(*endpoint, *token, *region)
 
 	// create a driver instance
-	drv := driver.NewDriver(driver.InputParams{
+	drv, err := driver.NewDriver(driver.InputParams{
 		Name: driver.DefaultName,
 		// unix:///var/lib/csi/sockets/csi.sock
 		Endpoint: *endpoint,
 		Region:   *region,
 		Token:    *token,
 	})
+	if err != nil {
+		fmt.Printf("Error %s, creating new instance of driver", err.Error())
+		return
+	}
 
 	// run on that driver instance, it would start the gRPC server
 	if err := drv.Run(); err != nil {
