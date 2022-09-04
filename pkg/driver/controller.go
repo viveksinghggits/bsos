@@ -68,6 +68,7 @@ func (d *Driver) DeleteVolume(context.Context, *csi.DeleteVolumeRequest) (*csi.D
 	return nil, nil
 }
 func (d *Driver) ControllerPublishVolume(context.Context, *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+	fmt.Println("ControllerPublishVolume of controller plugin was called")
 	return nil, nil
 }
 func (d *Driver) ControllerUnpublishVolume(context.Context, *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {

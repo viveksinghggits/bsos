@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-plugin
+spec:
+  selector:
+    matchLabels:
+      name: node-plugin
+  template:
+    metadata:
+      labels:
+        name: node-plugin
+    spec:
+      volumes:
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: DirectoryOrCreate
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/bsos.viveksingh.dev/
+            type: DirectoryOrCreate
+      containers:
+      - name: csi-driver-registrar
+        image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.0
+        args:
+          - "--csi-address=/csi/csi.sock"
+          - "--kubelet-registration-path=/var/lib/kubelet/plugins/bsos.viveksingh.dev/csi.sock"
+        volumeMounts:
+          - name: plugin-dir
+            mountPath: /csi
+          - name: registration-dir
+            mountPath: /registration
+      - name: node-plugin
+        image: viveksinghggits/bsos:0.0.11_yt
+        args:
+          - "--endpoint=$(CSI_ENDPOINT)"
+        env:
+        - name: CSI_ENDPOINT
+          value: unix:///csi/csi.sock
+        volumeMounts:
+        - name: plugin-dir
+          mountPath: /csi
