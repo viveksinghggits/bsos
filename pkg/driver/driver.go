@@ -18,6 +18,10 @@ const (
 	DefaultName = "bsos.viveksingh.dev"
 )
 
+var (
+	volNameKeyFromContPub = "bsos.viveksingh.dev/volume-name"
+)
+
 type Driver struct {
 	name     string
 	region   string
@@ -26,7 +30,8 @@ type Driver struct {
 	srv *grpc.Server
 	// http server, health check
 	// storage clients
-	storage godo.StorageService
+	storage       godo.StorageService
+	storageAction godo.StorageActionsService
 
 	ready bool
 }
@@ -46,10 +51,11 @@ func NewDriver(params InputParams) (*Driver, error) {
 	client := godo.NewFromToken(params.Token)
 
 	return &Driver{
-		name:     params.Name,
-		endpoint: params.Endpoint,
-		region:   params.Region,
-		storage:  client.Storage,
+		name:          params.Name,
+		endpoint:      params.Endpoint,
+		region:        params.Region,
+		storage:       client.Storage,
+		storageAction: client.StorageActions,
 	}, nil
 }
 

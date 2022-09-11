@@ -3,11 +3,14 @@ package driver
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/digitalocean/godo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -67,10 +70,66 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 func (d *Driver) DeleteVolume(context.Context, *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	return nil, nil
 }
-func (d *Driver) ControllerPublishVolume(context.Context, *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	fmt.Println("ControllerPublishVolume of controller plugin was called")
-	return nil, nil
+
+	// check if volumeID is present and volume is available on SP
+	if req.VolumeId == "" {
+		return nil, status.Error(codes.InvalidArgument, "VolumeID is mandatory in ControllerPublishVolume request")
+	}
+
+	// if nodeID is set, and node is actually present on SP
+	if req.NodeId == "" {
+		return nil, status.Error(codes.InvalidArgument, "NodeID is mandatory in CPVolume request")
+	}
+
+	vol, _, err := d.storage.GetVolume(ctx, req.VolumeId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Volume is not available anymore")
+	}
+
+	// check if the volume is already attache
+	// if it's attached to the correct node
+	// or its attached to a wrong node
+
+	// check readOnly is set, and you support readonly volumes
+	// also check volumeCaps
+
+	nodeID, err := strconv.Atoi(req.NodeId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "was not able to convert nodeID to int value")
+	}
+	action, _, err := d.storageAction.Attach(ctx, req.VolumeId, nodeID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed attaching volume to the node, error %s", err.Error()))
+	}
+
+	if err := d.waitForCompletion(req.VolumeId, action.ID); err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error %s, waiting for volume to be attached", err.Error()))
+	}
+
+	return &csi.ControllerPublishVolumeResponse{
+		PublishContext: map[string]string{
+			volNameKeyFromContPub: vol.Name,
+		},
+	}, nil
 }
+
+func (d *Driver) waitForCompletion(volID string, actionID int) error {
+	err := wait.Poll(1*time.Second, 5*time.Minute, func() (done bool, err error) {
+		a, _, err := d.storageAction.Get(context.Background(), volID, actionID)
+		if err != nil {
+			return false, nil
+		}
+
+		if a.Status == godo.ActionCompleted {
+			return true, nil
+		}
+		return false, nil
+	})
+	return err
+}
+
 func (d *Driver) ControllerUnpublishVolume(context.Context, *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	return nil, nil
 }
