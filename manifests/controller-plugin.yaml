@@ -40,7 +40,7 @@ spec:
         volumeMounts:
         - name: domain-socket
           mountPath: /var/lib/csi/sockets/pluginproxy
-      - image: viveksinghggits/bsos:0.0.12_yt
+      - image: viveksinghggits/bsos:0.0.15_yt
         name: bsos
         resources: {}
         args:

@@ -12,6 +12,12 @@ spec:
         name: node-plugin
     spec:
       volumes:
+        - name: device-dir
+          hostPath:
+            path: /dev
+        - name: pods-vol-dir
+          hostPath:
+            path: /var/lib/kubelet
         - name: registration-dir
           hostPath:
             path: /var/lib/kubelet/plugins_registry/
@@ -32,12 +38,19 @@ spec:
           - name: registration-dir
             mountPath: /registration
       - name: node-plugin
-        image: viveksinghggits/bsos:0.0.12_yt
+        image: viveksinghggits/bsos:0.0.15_yt
         args:
           - "--endpoint=$(CSI_ENDPOINT)"
         env:
         - name: CSI_ENDPOINT
           value: unix:///csi/csi.sock
+        securityContext:
+          privileged: true
         volumeMounts:
+        - name: pods-vol-dir
+          mountPath: /var/lib/kubelet
+          mountPropagation: "Bidirectional"
+        - name: device-dir
+          mountPath: /dev
         - name: plugin-dir
           mountPath: /csi
