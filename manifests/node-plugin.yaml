@@ -38,7 +38,7 @@ spec:
           - name: registration-dir
             mountPath: /registration
       - name: node-plugin
-        image: viveksinghggits/bsos:0.0.15_yt
+        image: viveksinghggits/bsos:0.0.16_yt
         args:
           - "--endpoint=$(CSI_ENDPOINT)"
         env:

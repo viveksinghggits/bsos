@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	metadata "github.com/digitalocean/go-metadata"
@@ -82,6 +83,9 @@ func mount(source, target, fsType string, options []string) error {
 	mountArgs = append(mountArgs, "-t", fsType)
 
 	// check of options and then append them at the end of the mount command
+	if len(options) > 0 {
+		mountArgs = append(mountArgs, "-o", strings.Join(options, ","))
+	}
 
 	mountArgs = append(mountArgs, source)
 	mountArgs = append(mountArgs, target)
@@ -120,7 +124,34 @@ func (d *Driver) NodeUnstageVolume(context.Context, *csi.NodeUnstageVolumeReques
 }
 func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	fmt.Printf("NodePublishVolume was called with source %s and target %s\n", req.StagingTargetPath, req.TargetPath)
-	return nil, nil
+
+	// make sure the requried fields are set and not empty
+
+	options := []string{"bind"}
+	if req.Readonly {
+		options = append(options, "ro")
+	}
+
+	// get req.VolumeCaps and make sure that you handle request for block mode as well
+	// here we are just handling request for filesystem mode
+	// in case of block mode, the source is going to be the device dir where volume was attached form ControllerPubVolume RPC
+
+	fsType := "ext4"
+	if req.VolumeCapability.GetMount().FsType != "" {
+		fsType = req.VolumeCapability.GetMount().FsType
+	}
+
+	source := req.StagingTargetPath
+	target := req.TargetPath
+
+	// we want to run mount -t fstype source target -o bind,ro
+
+	err := mount(source, target, fsType, options)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("Error %s, mounting the volume from staging dir to target dir", err.Error()))
+	}
+
+	return &csi.NodePublishVolumeResponse{}, nil
 }
 func (d *Driver) NodeUnpublishVolume(context.Context, *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	return nil, nil
